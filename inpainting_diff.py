@@ -13,8 +13,35 @@ from clip_classification import ClipPipeline
 
 WIDTH = 512
 HEIGHT = 512
-RATIO = 0.05
+RATIO= 0.05
 PROB = 0.6
+MASK_WIDTH = 128
+MASK_HEIGHT = 128
+
+# def make_mask(mask):
+#     mask = np.array(mask.convert("L"))
+#     mask = mask.astype(np.float32)/255.0
+#     mask[mask < 0.5] = 0
+#     mask[mask >= 0.5] = 1
+#     # increase mask to box
+#     coord  = np.where(mask == 1)
+#     xmin = min(coord[0])
+#     xmax = max(coord[0])
+#     ymin = min(coord[1])
+#     ymax = max(coord[1])
+#     # expand the mask
+#     mask_ratio = (xmax-xmin) * (ymax-ymin) / (WIDTH * HEIGHT)
+#     if mask_ratio < RATIO:
+#         expand = np.sqrt(RATIO / mask_ratio)
+#         xmax = int(xmax*expand)
+#         ymax = int(ymax*expand)
+#         if xmax > WIDTH:
+#             xmax = WIDTH
+#         if ymax > HEIGHT:
+#             ymax = HEIGHT
+#     mask[xmin:(xmax+1), ymin:(ymax+1)] = 1
+#     mask_image = Image.fromarray(mask.astype(np.uint8)*255).convert("RGB")
+#     return mask_image, mask_ratio
 
 def make_mask(mask):
     mask = np.array(mask.convert("L"))
@@ -37,11 +64,61 @@ def make_mask(mask):
             xmax = WIDTH
         if ymax > HEIGHT:
             ymax = HEIGHT
-    mask[xmin:(xmax+1), ymin:(ymax+1)] = 1
-    
-    mask_image = Image.fromarray(mask.astype(np.uint8)*255).convert("RGB")
+
+    dx = xmax - xmin
+    dy = ymax - ymin
+    new_mask, mask_ratio, flag = choose_area(dx, dy, mask)
+
+    if flag == 0:
+        new_mask, mask_ratio, flag = choose_area(MASK_HEIGHT, MASK_WIDTH, mask)
  
-    return mask_image, mask_ratio
+    mask_image = Image.fromarray(new_mask.astype(np.uint8)*255).convert("RGB")   
+ 
+    return mask_image, mask_ratio, flag
+
+def choose_area(dx, dy, mask):
+    A = np.array([dx, dy])
+    B = np.array([dx, WIDTH])
+    C = np.array([HEIGHT, dy])
+    D = np.array([HEIGHT, WIDTH])
+
+    candidates = [A, B, C, D]
+    random.shuffle(candidates)
+    new_mask = np.zeros((HEIGHT, WIDTH))
+    flag = 0
+    for i in candidates:     
+        if ~(mask[(i[0] - dx):i[0], (i[1] - dy):i[1]].any() == 1):
+            new_mask[(i[0] - dx):i[0], (i[1] - dy):i[1]] = 1
+            flag += 1
+            break
+    
+    mask_ratio = (dx * dy) / (WIDTH * HEIGHT)
+
+    return new_mask, mask_ratio, flag
+# def choose_area(xmin, xmax, ymin, ymax, mask):
+#     A = np.array([[0, 0],         [xmin, ymin]])
+#     B = np.array([[0, ymin],      [xmin, ymax]])
+#     C = np.array([[0, ymax],      [xmin, WIDTH]])
+#     D = np.array([[xmin, 0],      [xmax, ymin]])
+#     E = np.array([[xmin, ymax],   [xmax, WIDTH]])
+#     F = np.array([[xmax, 0],      [HEIGHT, ymin]])
+#     G = np.array([[xmin, ymin],   [HEIGHT, ymax]])
+#     H = np.array([[HEIGHT, ymax], [HEIGHT, WIDTH]])
+
+#     candidates = [A, B, C, D, E, F, G]
+#     random.shuffle(candidates)
+#     new_mask = np.zeros((HEIGHT, WIDTH))
+#     flag = 0
+#     for i in candidates:     
+#         if (i[1, 0] - i[0, 0]) * (i[1, 1] - i[0, 1]) / (WIDTH * HEIGHT) > RATIO_MIN:
+#             new_mask[i[0, 0]:i[1, 0], i[0, 1]:i[1, 1]] = 1
+#             flag += 1
+#             break
+    
+#     mask_ratio = (i[1, 0] - i[0, 0]) * (i[1, 1] - i[0, 1]) / (WIDTH * HEIGHT)
+
+#     return new_mask, mask_ratio, flag
+
 
 def crop_object(image, mask):
     image = np.array(image.convert("RGB"))
@@ -76,6 +153,7 @@ def num_bad_img(images):
     for idx, image in enumerate(images):
         test_object = crop_object(image, mask_image)
         # test_object.save("mm.jpg")
+        # breakpoint()
         label, prob = classifier.forward(test_object, data_root)
         if label not in prompt or prob < PROB:
             del_idx.append(idx)
@@ -119,8 +197,7 @@ if __name__ == "__main__":
     data_root = os.path.join(opt.indir, "Image")
     mask_root = os.path.join(opt.indir, "GT_Object")
 
-    # 2150:2300
-    images = [os.path.join(data_root, file_path) for file_path in os.listdir(data_root)]#[os.path.join(data_root, "COD10K-CAM-3-Flying-55-Butterfly-3420.jpg")]
+    images = [os.path.join(data_root, file_path) for file_path in os.listdir(data_root)][550:600]#[os.path.join(data_root, "COD10K-CAM-3-Flying-55-Butterfly-3420.jpg")]
     masks = [os.path.join(mask_root, os.path.splitext(os.path.split(file_path)[-1])[0] + '.png') for file_path in images]
     print(f"Found {len(masks)} inputs.")
 
@@ -148,18 +225,22 @@ if __name__ == "__main__":
         mask = Image.open(mask_path)
         image = image.resize((WIDTH, HEIGHT))
         mask= mask.resize((WIDTH, HEIGHT))
-        # print(f"resized to ({WIDTH}, {HEIGHT})")
-        # os.makedirs("/cluster/work/cvl/denfan/Train/metric_set", exist_ok=True)
-        # image.save(os.path.join("/cluster/work/cvl/denfan/Train/metric_set/", os.path.split(image_path)[1]))
+        print(f"resized to ({WIDTH}, {HEIGHT})")
+        os.makedirs("/cluster/scratch/denfan/Train/resize", exist_ok=True)
+        os.makedirs("/cluster/scratch/denfan/Train/resize/Image", exist_ok=True)
+        os.makedirs("/cluster/scratch/denfan/Train/resize/GT_Object", exist_ok=True)
+        image.save(os.path.join("/cluster/scratch/denfan/Train/resize/Image", os.path.split(image_path)[1]))
+        mask.save(os.path.join("/cluster/scratch/denfan/Train/resize/GT_Object", os.path.split(image_path)[1]))
 
-        mask_image, mask_ratio = make_mask(mask)
-        print(f"mask ratio is {mask_ratio}")
+        mask_image, mask_ratio, flag = make_mask(mask)
+        # print(f"mask ratio is {mask_ratio}")
+        if flag == 0: continue
         # mask_image.save("./m.jpg")
         # breakpoint()
 
         # Higher guidance scale encourages to generate images that are closely linked to the text `prompt`,
         # usually at the expense of lower image quality.
-        num_samples = 10
+        num_samples = 5
         guidance_scale=7.5
         seed = random.randint(1, 10)
         generator = torch.Generator(device="cuda").manual_seed(seed) # change the seed to get different results
@@ -171,7 +252,7 @@ if __name__ == "__main__":
                     generator=generator,
                     num_images_per_prompt=num_samples,
                     ).images
-        
+             
         num_resamples, images = num_bad_img(images)
         count = 0
         while (len(images) < num_samples) & (count < 10):
@@ -190,7 +271,6 @@ if __name__ == "__main__":
             count += 1
 
         for idx, image in enumerate(images, start = 1):
-            # breakpoint()
             subpath = os.path.join(os.path.splitext(outpath)[0] + "-" + str(idx) + os.path.splitext(outpath)[1])
             image.save(subpath)
 
