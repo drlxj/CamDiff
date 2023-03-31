@@ -13,35 +13,153 @@ from clip_classification import ClipPipeline
 
 WIDTH = 512
 HEIGHT = 512
-RATIO = 0.05
-PROB = 0.6
+RATIO = 0.0625
+RATIO_MIN = 0.0625
+RATIO_MAX = 0.25
+LENGTH_RATIO_MIN = 1/5
+LENGTH_RATIO_MAX = 5
+MASK_RATIO = 0.75
+SHRINK = np.sqrt(MASK_RATIO)
+PROB = 0.4
+MASK_WIDTH = 128
+MASK_HEIGHT = 128
 
-def make_mask(mask):
+# def make_mask(mask):
+#     mask = np.array(mask.convert("L"))
+#     mask = mask.astype(np.float32)/255.0
+#     mask[mask < 0.5] = 0
+#     mask[mask >= 0.5] = 1
+#     # increase mask to box
+#     coord  = np.where(mask == 1)
+#     xmin = min(coord[0])
+#     xmax = max(coord[0])
+#     ymin = min(coord[1])
+#     ymax = max(coord[1])
+#     # expand the mask
+#     mask_ratio = (xmax-xmin) * (ymax-ymin) / (WIDTH * HEIGHT)
+#     if mask_ratio < RATIO:
+#         expand = np.sqrt(RATIO / mask_ratio)
+#         xmax = int(xmax*expand)
+#         ymax = int(ymax*expand)
+#         if xmax > WIDTH:
+#             xmax = WIDTH
+#         if ymax > HEIGHT:
+#             ymax = HEIGHT
+#     mask = np.ones((HEIGHT, WIDTH))
+#     mask[xmin:(xmax+1), ymin:(ymax+1)] = 0
+#     mask_image = Image.fromarray(mask.astype(np.uint8)*255).convert("RGB")
+#     return mask_image, mask_ratio
+
+# def make_mask(mask):
+#     mask = np.array(mask.convert("L"))
+#     mask = mask.astype(np.float32)/255.0
+#     mask[mask < 0.5] = 0
+#     mask[mask >= 0.5] = 1
+#     # increase mask to box
+#     coord  = np.where(mask == 1)
+#     xmin = min(coord[0])
+#     xmax = max(coord[0])
+#     ymin = min(coord[1])
+#     ymax = max(coord[1])
+
+#     # expand the mask to ensure the new mask is not smaller than RATIO_MIN of the original image
+#     mask_ratio = (xmax-xmin) * (ymax-ymin) / (WIDTH * HEIGHT)
+#     expand_x = np.sqrt(RATIO_MIN) * HEIGHT
+#     expand_y = np.sqrt(RATIO_MIN) * WIDTH
+#     x_min = xmin - int(expand_x / 2)
+#     x_max = xmax + int(expand_x / 2)
+#     y_min = ymin - int(expand_y / 2)
+#     y_max = ymax + int(expand_y / 2)
+
+#     if x_min < 0: x_min = 0
+#     if x_max > HEIGHT: x_max = HEIGHT
+#     if y_min < 0: y_min = 0
+#     if y_max > WIDTH: y_max = WIDTH
+
+#     new_mask, mask_ratio, flag = choose_area(xmin, xmax, ymin, ymax, mask)
+
+#     mask_image = Image.fromarray(new_mask.astype(np.uint8)*255).convert("RGB")   
+ 
+#     return mask_image, mask_ratio, flag
+
+def make_mask(mask, image):
     mask = np.array(mask.convert("L"))
     mask = mask.astype(np.float32)/255.0
     mask[mask < 0.5] = 0
     mask[mask >= 0.5] = 1
+
+    image = np.array(image.convert("RGB"))
+    image = image.transpose(2,0,1)
     # increase mask to box
     coord  = np.where(mask == 1)
     xmin = min(coord[0])
     xmax = max(coord[0])
     ymin = min(coord[1])
     ymax = max(coord[1])
-    # expand the mask
-    mask_ratio = (xmax-xmin) * (ymax-ymin) / (WIDTH * HEIGHT)
-    if mask_ratio < RATIO:
-        expand = np.sqrt(RATIO / mask_ratio)
-        xmax = int(xmax*expand)
-        ymax = int(ymax*expand)
-        if xmax > WIDTH:
-            xmax = WIDTH
-        if ymax > HEIGHT:
-            ymax = HEIGHT
-    mask[xmin:(xmax+1), ymin:(ymax+1)] = 1
-    
-    mask_image = Image.fromarray(mask.astype(np.uint8)*255).convert("RGB")
+
+    new_image, new_mask, mask_ratio, coord, flag = choose_area(xmin, xmax, ymin, ymax, image)
+
+    if flag == 1:
+        new_image = Image.fromarray(new_image.astype(np.uint8).transpose(1, 2, 0))
+        mask_image = Image.fromarray(new_mask.astype(np.uint8)*255).convert("RGB") 
+    else:
+        mask_image = 0 
  
-    return mask_image, mask_ratio
+    return new_image, mask_image, mask_ratio, coord, flag
+
+def choose_area(xmin, xmax, ymin, ymax, image):
+    A = np.array([[0, 0],         [xmin, ymin]])
+    B = np.array([[0, ymin],      [xmin, ymax]])
+    C = np.array([[0, ymax],      [xmin, WIDTH]])
+    D = np.array([[xmin, 0],      [xmax, ymin]])
+    E = np.array([[xmin, ymax],   [xmax, WIDTH]])
+    F = np.array([[xmax, 0],      [HEIGHT, ymin]])
+    G = np.array([[xmax, ymin],   [HEIGHT, ymax]])
+    H = np.array([[xmax, ymax], [HEIGHT, WIDTH]])
+
+    candidates = [A, B, C, D, E, F, G, H]
+    random.shuffle(candidates)
+    flag = 0
+    for i in candidates:    
+        mask_ratio = (i[1, 0] - i[0, 0]) * (i[1, 1] - i[0, 1]) / (WIDTH * HEIGHT) 
+        if mask_ratio > RATIO_MIN:                              # avoid mask ratio is zero
+            # Mask is a square, because DM's input size is 512 x 512
+            if ((i[1, 0] - i[0, 0]) < (i[1, 1] - i[0, 1])):
+                i[1, 1] = i[0, 1] + (i[1, 0] - i[0, 0])
+            else:
+                i[1, 0] = i[0, 0] + (i[1, 1] - i[0, 1])
+            if mask_ratio > RATIO_MAX:                          # avoid mask ratio is too big
+                shrink = np.sqrt(RATIO_MAX / mask_ratio)
+                x_mid = int((i[1, 0] + i[0, 0]) / 2)
+                y_mid = int((i[1, 1] + i[0, 1]) / 2)
+                dx = int((i[1, 0] - i[0, 0]) * shrink)
+                dy = int((i[1, 1] - i[0, 1]) * shrink)
+                d = min(dx, dy)
+                i[0, 0] = int(x_mid - dx / 2)
+                i[1, 0] = int(x_mid + dx / 2)
+                i[0, 1] = int(y_mid - dy / 2)
+                i[1, 1] = int(y_mid + dy / 2)
+            # new_mask[i[0, 0]:i[1, 0], i[0, 1]:i[1, 1]] = 1
+            new_image = image[:, i[0, 0]:i[1, 0], i[0, 1]:i[1, 1]]
+            flag += 1
+            break   
+    if flag == 1:
+        new_mask = np.zeros((new_image.shape[1], new_image.shape[2]))
+        x_mid_mask = int(new_image.shape[1] / 2)
+        y_mid_mask = int(new_image.shape[2] / 2)
+        dx_half_mask = int(new_image.shape[1] * SHRINK  / 2)
+        dy_half_mask = int(new_image.shape[2] * SHRINK / 2)
+        new_mask[(x_mid_mask-dx_half_mask) : (x_mid_mask+dx_half_mask), (y_mid_mask-dy_half_mask):(y_mid_mask+dy_half_mask)] = 1
+
+        mask_ratio = (i[1, 0] - i[0, 0]) * (i[1, 1] - i[0, 1]) / (WIDTH * HEIGHT) * MASK_RATIO
+    else:
+        new_mask = 0
+        new_image = 0
+        mask_ratio = 0
+        i = 0
+
+    return new_image, new_mask, mask_ratio, i, flag
+
 
 def crop_object(image, mask):
     image = np.array(image.convert("RGB"))
@@ -70,17 +188,40 @@ def crop_object(image, mask):
 
     return mask_image
 
-def num_bad_img(images):
+def num_bad_img(images, mask_image, prompt, org_w , org_h, coord, org_image):
     del_idx = []
     left_images = []
     for idx, image in enumerate(images):
         test_object = crop_object(image, mask_image)
         # test_object.save("mm.jpg")
-        label, prob = classifier.forward(test_object, data_root)
+        # image.save("mmm.jpg")
+        # breakpoint()
+
+        label, prob = classifier.forward(test_object)
+
+        # avoid many types of fish
+        if "Fish" in label or "fish" in label:
+            label = "Fish"
+        if "Frogmouth" in label:
+            label = "Bird"
+
+        # insert the sampled image into the original image
+        image = image.resize((org_w, org_h))
+        image = np.array(image.convert("RGB"))
+        image = image.transpose(2,0,1)
+
+        new_image = org_image.copy()
+        new_image = np.array(new_image.convert("RGB"))
+        new_image = new_image.transpose(2,0,1)
+        new_image[:, coord[0, 0]:coord[1, 0], coord[0,1]:coord[1,1]] = image
+        new_image = Image.fromarray(new_image.transpose(1, 2, 0))
+        # new_image.save("./image.jpg")
+        # breakpoint()
+
         if label not in prompt or prob < PROB:
             del_idx.append(idx)
         else:
-            left_images.append(image)
+            left_images.append(new_image)
     
     return len(del_idx), left_images
 
@@ -116,11 +257,10 @@ if __name__ == "__main__":
     )
     opt = parser.parse_args()
 
-    data_root = os.path.join(opt.indir, "Image")
-    mask_root = os.path.join(opt.indir, "GT_Object")
+    data_root = os.path.join(opt.indir, "Imgs")
+    mask_root = os.path.join(opt.indir, "GT")
 
-    # 2150:2300
-    images = [os.path.join(data_root, file_path) for file_path in os.listdir(data_root)]#[os.path.join(data_root, "COD10K-CAM-3-Flying-55-Butterfly-3420.jpg")]
+    images =  [os.path.join(data_root, file_path) for file_path in os.listdir(data_root)][3500::] # [os.path.join(data_root, "COD10K-CAM-3-Flying-61-Katydid-3979.jpg")]
     masks = [os.path.join(mask_root, os.path.splitext(os.path.split(file_path)[-1])[0] + '.png') for file_path in images]
     print(f"Found {len(masks)} inputs.")
 
@@ -130,17 +270,26 @@ if __name__ == "__main__":
         torch_dtype=torch.float16,
     ).to(opt.device)
     print("Pretrained model is loaded")
-    # classifier = EfficientnetPipeline(opt.device)
-    classifier = ClipPipeline(opt.device)
+    classifier = ClipPipeline(data_root, opt.device)
 
     print("-------------Begin inpainting-------------")
     start = time.time()
     os.makedirs(opt.outdir, exist_ok=True)
     for image_path, mask_path in zip(images, masks): 
         print(f"Image file: {image_path}")
+        # breakpoint()
         outpath = os.path.join(opt.outdir, os.path.split(image_path)[1])
-        prompt = "a " + os.path.split(outpath)[1].split("-")[-2]
-        print("Prompt: " + prompt)
+        if len(os.path.split(outpath)[1].split("-")) == 1:
+            # camo, chameleon, nc4k
+            prompt = "a " + random.choice(classifier.labels)
+        else:
+            prompt = "a " + os.path.split(outpath)[1].split("-")[-2]        
+        print("Prompt: " + prompt) 
+        # avoid many types of fish
+        if "Fish" in prompt or "fish" in prompt:
+            prompt = "a Fish"
+        if "Frogmouth" in prompt:
+            prompt = "a Bird"
 
         #image and mask_image should be PIL images.
         #The mask structure is white for inpainting and black for keeping as is
@@ -148,51 +297,84 @@ if __name__ == "__main__":
         mask = Image.open(mask_path)
         image = image.resize((WIDTH, HEIGHT))
         mask= mask.resize((WIDTH, HEIGHT))
-        # print(f"resized to ({WIDTH}, {HEIGHT})")
-        # os.makedirs("/cluster/work/cvl/denfan/Train/metric_set", exist_ok=True)
-        # image.save(os.path.join("/cluster/work/cvl/denfan/Train/metric_set/", os.path.split(image_path)[1]))
+        print(f"resized to ({WIDTH}, {HEIGHT})")
+        # os.makedirs("/cluster/scratch/denfan/test4", exist_ok=True)
+        # os.makedirs("/cluster/scratch/denfan/test4/Imgs", exist_ok=True)
+        # os.makedirs("/cluster/scratch/denfan/test4/GT", exist_ok=True)
+        # image.save(os.path.join("/cluster/scratch/denfan/test4/Imgs", os.path.split(image_path)[1]))
+        # mask.save(os.path.join("/cluster/scratch/denfan/test4/GT", os.path.split(image_path)[1]))
 
-        mask_image, mask_ratio = make_mask(mask)
-        print(f"mask ratio is {mask_ratio}")
-        # mask_image.save("./m.jpg")
-        # breakpoint()
+        
 
         # Higher guidance scale encourages to generate images that are closely linked to the text `prompt`,
         # usually at the expense of lower image quality.
-        num_samples = 10
-        guidance_scale=7.5
-        seed = random.randint(1, 10)
-        generator = torch.Generator(device="cuda").manual_seed(seed) # change the seed to get different results
-        
-        images = pipe(prompt=prompt, 
-                    image=image, 
-                    mask_image=mask_image,
-                    guidance_scale=guidance_scale,
-                    generator=generator,
-                    num_images_per_prompt=num_samples,
-                    ).images
-        
-        num_resamples, images = num_bad_img(images)
-        count = 0
-        while (len(images) < num_samples) & (count < 10):
-            print(f"Resample {num_resamples} images")
-            generator = torch.Generator(device="cuda").manual_seed(random.randint(1+seed, 1000+seed))
-            resample_images = pipe(prompt=prompt, 
-                    image=image, 
-                    mask_image=mask_image,
-                    guidance_scale=guidance_scale,
-                    generator=generator,
-                    num_images_per_prompt=num_resamples,
-                    ).images
-            num_resamples, left_images = num_bad_img(resample_images)
-            for img in left_images:
-                images.append(img)
-            count += 1
-
-        for idx, image in enumerate(images, start = 1):
+        num_samples = 3
+        guidance_scale= 7.5
+        seed = 0
+        for i in range(num_samples): 
+            if len(os.path.split(outpath)[1].split("-")) == 1:
+                # camo, chameleon, nc4k
+                prompt = "a " + random.choice(classifier.labels)
+            seed = random.randint(seed + 1,  seed + 10)
+            # mask position is randomly generated
+            new_image, mask_image, mask_ratio, coord, flag = make_mask(mask, image)
+            print(f"mask ratio is {mask_ratio}")
+            # mask_image.save("./m.jpg")
             # breakpoint()
-            subpath = os.path.join(os.path.splitext(outpath)[0] + "-" + str(idx) + os.path.splitext(outpath)[1])
-            image.save(subpath)
+            
+            if flag == 0:
+                print("Remask")
+                continue
+
+            org_w , org_h = mask_image.size
+            new_image = new_image.resize((WIDTH, HEIGHT))
+            mask_image= mask_image.resize((WIDTH, HEIGHT))
+
+            generator = torch.Generator(device="cuda").manual_seed(seed) # change the seed to get different results
+            
+            images = pipe(prompt=prompt, 
+                        image=new_image, 
+                        mask_image=mask_image,
+                        guidance_scale=guidance_scale,
+                        generator=generator,
+                        num_images_per_prompt=1,
+                        ).images
+            num_resamples, images = num_bad_img(images, mask_image, prompt, org_w , org_h, coord, image)
+            
+            # avoid no break in while loop
+            count = 0
+            while (len(images) < 1) & (count < 10):
+                print(f"Resample {num_resamples} images")
+                new_image, mask_image, mask_ratio, coord, flag = make_mask(mask, image)
+                print(f"mask ratio is {mask_ratio}")
+
+                if flag == 0:
+                    print("Remask")
+                    continue
+
+                org_w , org_h = mask_image.size
+                new_image = new_image.resize((WIDTH, HEIGHT))
+                mask_image= mask_image.resize((WIDTH, HEIGHT))
+
+                # breakpoint()
+                generator = torch.Generator(device="cuda").manual_seed(random.randint(seed + 1,  seed + 10))
+                resample_images = pipe(prompt=prompt, 
+                        image=new_image, 
+                        mask_image=mask_image,
+                        guidance_scale=guidance_scale,
+                        generator=generator,
+                        num_images_per_prompt=num_resamples,
+                        ).images
+
+                num_resamples, left_images = num_bad_img(resample_images, mask_image, prompt, org_w , org_h, coord, image)
+                for img in left_images:
+                    images.append(img)
+                count += 1
+            
+            if num_resamples != 1:
+                subpath = os.path.join(os.path.splitext(outpath)[0] + "-" + str(i) + os.path.splitext(outpath)[1])
+                images[0].save(subpath)
+        # breakpoint()
 
     end = time.time()
     print(f"Total time: {end - start}")
