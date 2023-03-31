@@ -123,11 +123,11 @@ def choose_area(xmin, xmax, ymin, ymax, image):
     for i in candidates:    
         mask_ratio = (i[1, 0] - i[0, 0]) * (i[1, 1] - i[0, 1]) / (WIDTH * HEIGHT) 
         if mask_ratio > RATIO_MIN:                              # avoid mask ratio is zero
-            # # Mask is a square, because DM's input size is 512 x 512
-            # if ((i[1, 0] - i[0, 0]) < (i[1, 1] - i[0, 1])):
-            #     i[1, 1] = i[0, 1] + (i[1, 0] - i[0, 0])
-            # else:
-            #     i[1, 0] = i[0, 0] + (i[1, 1] - i[0, 1])
+            # Mask is a square, because DM's input size is 512 x 512
+            if ((i[1, 0] - i[0, 0]) < (i[1, 1] - i[0, 1])):
+                i[1, 1] = i[0, 1] + (i[1, 0] - i[0, 0])
+            else:
+                i[1, 0] = i[0, 0] + (i[1, 1] - i[0, 1])
             if mask_ratio > RATIO_MAX:                          # avoid mask ratio is too big
                 shrink = np.sqrt(RATIO_MAX / mask_ratio)
                 x_mid = int((i[1, 0] + i[0, 0]) / 2)
@@ -260,7 +260,7 @@ if __name__ == "__main__":
     data_root = os.path.join(opt.indir, "Imgs")
     mask_root = os.path.join(opt.indir, "GT")
 
-    images =  [os.path.join(data_root, file_path) for file_path in os.listdir(data_root)][4000::] # [os.path.join(data_root, "COD10K-CAM-3-Flying-61-Katydid-3979.jpg")]
+    images =  [os.path.join(data_root, file_path) for file_path in os.listdir(data_root)][3500::] # [os.path.join(data_root, "COD10K-CAM-3-Flying-61-Katydid-3979.jpg")]
     masks = [os.path.join(mask_root, os.path.splitext(os.path.split(file_path)[-1])[0] + '.png') for file_path in images]
     print(f"Found {len(masks)} inputs.")
 
@@ -270,7 +270,6 @@ if __name__ == "__main__":
         torch_dtype=torch.float16,
     ).to(opt.device)
     print("Pretrained model is loaded")
-    # classifier = EfficientnetPipeline(opt.device)
     classifier = ClipPipeline(data_root, opt.device)
 
     print("-------------Begin inpainting-------------")
@@ -278,13 +277,19 @@ if __name__ == "__main__":
     os.makedirs(opt.outdir, exist_ok=True)
     for image_path, mask_path in zip(images, masks): 
         print(f"Image file: {image_path}")
+        # breakpoint()
         outpath = os.path.join(opt.outdir, os.path.split(image_path)[1])
-        # prompt = "a " + os.path.split(outpath)[1].split("-")[-2]
-        # # avoid many types of fish
-        # if "Fish" in prompt or "fish" in prompt:
-        #     prompt = "a Fish"
-        # if "Frogmouth" in prompt:
-        #     prompt = "a Bird"
+        if len(os.path.split(outpath)[1].split("-")) == 1:
+            # camo, chameleon, nc4k
+            prompt = "a " + random.choice(classifier.labels)
+        else:
+            prompt = "a " + os.path.split(outpath)[1].split("-")[-2]        
+        print("Prompt: " + prompt) 
+        # avoid many types of fish
+        if "Fish" in prompt or "fish" in prompt:
+            prompt = "a Fish"
+        if "Frogmouth" in prompt:
+            prompt = "a Bird"
 
         #image and mask_image should be PIL images.
         #The mask structure is white for inpainting and black for keeping as is
@@ -306,9 +311,10 @@ if __name__ == "__main__":
         num_samples = 3
         guidance_scale= 7.5
         seed = 0
-        for i in range(num_samples):
-            prompt = "a " + random.choice(classifier.labels)
-            print("Prompt: " + prompt)  
+        for i in range(num_samples): 
+            if len(os.path.split(outpath)[1].split("-")) == 1:
+                # camo, chameleon, nc4k
+                prompt = "a " + random.choice(classifier.labels)
             seed = random.randint(seed + 1,  seed + 10)
             # mask position is randomly generated
             new_image, mask_image, mask_ratio, coord, flag = make_mask(mask, image)

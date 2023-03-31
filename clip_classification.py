@@ -7,17 +7,20 @@ def get_label_list(input_dir):
     images = [os.path.join(input_dir, file_path) for file_path in os.listdir(input_dir)]
     label_list = []
     for image in images:
-        label = os.path.split(image)[1].split("-")[-2]
-        if label not in label_list:
-            label_list.append(label)
+        if len(os.path.split(image)[1].split("-")) == 1:
+            continue
+        else:
+            label = os.path.split(image)[1].split("-")[-2]
+            if label not in label_list:
+                label_list.append(label)
     return label_list
 
 class ClipPipeline():
     def __init__(self, input_dir, device) -> None:
         self.device = device
         self.model, self.preprocess = clip.load("ViT-B/32", device=device)
-        # self.labels = get_label_list(input_dir)
-        self.labels = ["Fish", "Rabbit", "Butterfly", "Bird", "Cat", "Dog", "Duck", "Bee", "Owl", "Frog"]
+        self.labels = get_label_list(input_dir)
+        # self.labels = ["Fish", "Rabbit", "Butterfly", "Bird", "Cat", "Dog", "Duck", "Bee", "Owl", "Frog"]
 
     def forward(self, image):
         img = self.preprocess(image).unsqueeze(0).to(self.device)
