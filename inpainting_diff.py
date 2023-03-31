@@ -193,10 +193,6 @@ def num_bad_img(images, mask_image, prompt, org_w , org_h, coord, org_image):
     left_images = []
     for idx, image in enumerate(images):
         test_object = crop_object(image, mask_image)
-        # test_object.save("mm.jpg")
-        # image.save("mmm.jpg")
-        # breakpoint()
-
         label, prob = classifier.forward(test_object)
 
         # avoid many types of fish
@@ -260,7 +256,7 @@ if __name__ == "__main__":
     data_root = os.path.join(opt.indir, "Imgs")
     mask_root = os.path.join(opt.indir, "GT")
 
-    images =  [os.path.join(data_root, file_path) for file_path in os.listdir(data_root)][3500::] # [os.path.join(data_root, "COD10K-CAM-3-Flying-61-Katydid-3979.jpg")]
+    images =  [os.path.join(data_root, file_path) for file_path in os.listdir(data_root)][0:1] 
     masks = [os.path.join(mask_root, os.path.splitext(os.path.split(file_path)[-1])[0] + '.png') for file_path in images]
     print(f"Found {len(masks)} inputs.")
 
@@ -308,7 +304,7 @@ if __name__ == "__main__":
 
         # Higher guidance scale encourages to generate images that are closely linked to the text `prompt`,
         # usually at the expense of lower image quality.
-        num_samples = 3
+        num_samples = 1
         guidance_scale= 7.5
         seed = 0
         for i in range(num_samples): 
@@ -319,8 +315,6 @@ if __name__ == "__main__":
             # mask position is randomly generated
             new_image, mask_image, mask_ratio, coord, flag = make_mask(mask, image)
             print(f"mask ratio is {mask_ratio}")
-            # mask_image.save("./m.jpg")
-            # breakpoint()
             
             if flag == 0:
                 print("Remask")
@@ -356,7 +350,6 @@ if __name__ == "__main__":
                 new_image = new_image.resize((WIDTH, HEIGHT))
                 mask_image= mask_image.resize((WIDTH, HEIGHT))
 
-                # breakpoint()
                 generator = torch.Generator(device="cuda").manual_seed(random.randint(seed + 1,  seed + 10))
                 resample_images = pipe(prompt=prompt, 
                         image=new_image, 
@@ -374,7 +367,6 @@ if __name__ == "__main__":
             if num_resamples != 1:
                 subpath = os.path.join(os.path.splitext(outpath)[0] + "-" + str(i) + os.path.splitext(outpath)[1])
                 images[0].save(subpath)
-        # breakpoint()
 
     end = time.time()
     print(f"Total time: {end - start}")
