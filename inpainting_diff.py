@@ -227,14 +227,14 @@ if __name__ == "__main__":
     parser.add_argument(
         "--indir",
         type=str,
-        default="/cluster/work/cvl/denfan/Train",
+        default="./Dataset",
         nargs="?",
         help="dir containing image-mask pairs (`example.png` and `example_mask.png`)",
     )
     parser.add_argument(
         "--outdir",
         type=str,
-        default="/cluster/work/cvl/denfan/Train/out/test1",
+        default="./result",
         nargs="?",
         help="dir to write results to",
     )
