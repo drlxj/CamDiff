@@ -256,7 +256,7 @@ if __name__ == "__main__":
     data_root = os.path.join(opt.indir, "Imgs")
     mask_root = os.path.join(opt.indir, "GT")
 
-    images =  [os.path.join(data_root, file_path) for file_path in os.listdir(data_root)][0:1] 
+    images =  [os.path.join(data_root, file_path) for file_path in os.listdir(data_root)]
     masks = [os.path.join(mask_root, os.path.splitext(os.path.split(file_path)[-1])[0] + '.png') for file_path in images]
     print(f"Found {len(masks)} inputs.")
 
