@@ -19,5 +19,10 @@ Download COD datasets in the Dataset folder. The dataset needs to include 'Imgs'
 python inpainting_diff.py --indir ./Dataset --outdir ./result
 ```` 
 
-## Results 
-![Figure 1 - gneration](Imgs/multi.pdf)
+## Generation Results 
+The figure shows the synthesized images from our framework from various classes. On the left side, the text is the input prompt, and each image is extended to generate three additional images of the same class, featuring objects with varying appearances. 
+![Figure 1 - gneration](Imgs/multi.png)
+
+## Evaluation on the COD models
+![Figure 2 - gneration](Imgs/eval.png)
+
