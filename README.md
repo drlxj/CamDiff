@@ -13,11 +13,13 @@ conda install pytorch==1.13.0 torchvision==0.14.0 torchaudio==0.13.0 pytorch-cud
 pip install git+https://github.com/openai/CLIP.git
 ````
 
-## Image Generation
+## Usage
+### Generation
 Download COD datasets in the Dataset folder. The dataset needs to include 'Imgs' and 'GT' folder.
 ```` bash
 python inpainting_diff.py --indir ./Dataset --outdir ./result
 ```` 
+### Dataset
 The generated dataset can be downloaded: 
 
 ## Paper Details
