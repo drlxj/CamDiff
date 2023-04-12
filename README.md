@@ -22,12 +22,52 @@ pip install git+https://github.com/openai/CLIP.git
 
 ## Usage
 ### Generation
-Download COD datasets in the Dataset folder. The dataset needs to include 'Imgs' and 'GT' folder.
+Download the COD datasets in the `Dataset` folder. The dataset needs to include 'Imgs' and 'GT' folder.
 ```` bash
 python inpainting_diff.py --indir ./Dataset --outdir ./result
 ```` 
 ### Dataset
-See here for an overview of the datastet. The dataset can be downloaded here. 
+
+Here is the overview of the dataset:
+
+`Imgs` folders include the original images in COD datasets.
+
+`GT` folders include the original masks in COD dataset.
+
+The `new` folders in the testing set include the synthesized images. In the training set, the `new1+1` folder replaces 3717 images in Imgs with the synthesized images. The `new3` folder extends each image to generate three additional images of the same class using CamDiff.
+
+The dataset can be downloaded here. 
+
+```shell
+COD-RGBD
+  COD-TestDataset
+    CAMO
+      Imgs
+        XXXXXX.jpg
+      GT
+        XXXXXX.png
+      new
+        XXXXXX.jpg
+      pose
+        000000.txt
+    CHAMELEON
+      Imgs
+      GT
+      new
+    COD10K
+      Imgs
+      GT
+      new
+    NC4K
+      Imgs
+      GT
+      new
+  COD-TrainDataset
+    Imgs
+    GT
+    new1+1
+    new3
+```
 
 
 ## Paper Details
