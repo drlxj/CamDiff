@@ -36,7 +36,7 @@ Here is the overview of the dataset:
 
 The `new` folders in the testing set include the synthesized images. In the training set, the `new1+1` folder replaces 3717 images in Imgs with the synthesized images. The `new3` folder extends each image to generate three additional images of the same class using CamDiff.
 
-The dataset can be downloaded here. 
+The dataset can be downloaded [here](https://drive.google.com/file/d/1g6_8TX4FNxy6lLE9piCQMe0nmr8693dZ/view?usp=share_link). (Dataset size: ~5GB)
 
 ```shell
 COD-RGBD
