@@ -81,5 +81,5 @@ The second row: the results of the models that use the same checkpoints as the f
 
 The third row: the results of the models that use the checkpoints trained on our Diff-COD dataset, and then tested on the synthesized images. Compared with the second row, the robustness to saliency improves significantly.
 
-![Figure 2 - gneration](Imgs/eval.png)
+![Figure 2 - gneration](Imgs/frog1.png)
 
