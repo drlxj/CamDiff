@@ -24,63 +24,6 @@ PROB = 0.4
 MASK_WIDTH = 128
 MASK_HEIGHT = 128
 
-# def make_mask(mask):
-#     mask = np.array(mask.convert("L"))
-#     mask = mask.astype(np.float32)/255.0
-#     mask[mask < 0.5] = 0
-#     mask[mask >= 0.5] = 1
-#     # increase mask to box
-#     coord  = np.where(mask == 1)
-#     xmin = min(coord[0])
-#     xmax = max(coord[0])
-#     ymin = min(coord[1])
-#     ymax = max(coord[1])
-#     # expand the mask
-#     mask_ratio = (xmax-xmin) * (ymax-ymin) / (WIDTH * HEIGHT)
-#     if mask_ratio < RATIO:
-#         expand = np.sqrt(RATIO / mask_ratio)
-#         xmax = int(xmax*expand)
-#         ymax = int(ymax*expand)
-#         if xmax > WIDTH:
-#             xmax = WIDTH
-#         if ymax > HEIGHT:
-#             ymax = HEIGHT
-#     mask = np.ones((HEIGHT, WIDTH))
-#     mask[xmin:(xmax+1), ymin:(ymax+1)] = 0
-#     mask_image = Image.fromarray(mask.astype(np.uint8)*255).convert("RGB")
-#     return mask_image, mask_ratio
-
-# def make_mask(mask):
-#     mask = np.array(mask.convert("L"))
-#     mask = mask.astype(np.float32)/255.0
-#     mask[mask < 0.5] = 0
-#     mask[mask >= 0.5] = 1
-#     # increase mask to box
-#     coord  = np.where(mask == 1)
-#     xmin = min(coord[0])
-#     xmax = max(coord[0])
-#     ymin = min(coord[1])
-#     ymax = max(coord[1])
-
-#     # expand the mask to ensure the new mask is not smaller than RATIO_MIN of the original image
-#     mask_ratio = (xmax-xmin) * (ymax-ymin) / (WIDTH * HEIGHT)
-#     expand_x = np.sqrt(RATIO_MIN) * HEIGHT
-#     expand_y = np.sqrt(RATIO_MIN) * WIDTH
-#     x_min = xmin - int(expand_x / 2)
-#     x_max = xmax + int(expand_x / 2)
-#     y_min = ymin - int(expand_y / 2)
-#     y_max = ymax + int(expand_y / 2)
-
-#     if x_min < 0: x_min = 0
-#     if x_max > HEIGHT: x_max = HEIGHT
-#     if y_min < 0: y_min = 0
-#     if y_max > WIDTH: y_max = WIDTH
-
-#     new_mask, mask_ratio, flag = choose_area(xmin, xmax, ymin, ymax, mask)
-
-#     mask_image = Image.fromarray(new_mask.astype(np.uint8)*255).convert("RGB")   
- 
-#     return mask_image, mask_ratio, flag
 
 def make_mask(mask, image):
     mask = np.array(mask.convert("L"))
@@ -293,14 +236,7 @@ if __name__ == "__main__":
         mask = Image.open(mask_path)
         image = image.resize((WIDTH, HEIGHT))
         mask= mask.resize((WIDTH, HEIGHT))
-        print(f"resized to ({WIDTH}, {HEIGHT})")
-        # os.makedirs("/cluster/scratch/denfan/test4", exist_ok=True)
-        # os.makedirs("/cluster/scratch/denfan/test4/Imgs", exist_ok=True)
-        # os.makedirs("/cluster/scratch/denfan/test4/GT", exist_ok=True)
-        # image.save(os.path.join("/cluster/scratch/denfan/test4/Imgs", os.path.split(image_path)[1]))
-        # mask.save(os.path.join("/cluster/scratch/denfan/test4/GT", os.path.split(image_path)[1]))
-
-        
+        print(f"resized to ({WIDTH}, {HEIGHT})")    
 
         # Higher guidance scale encourages to generate images that are closely linked to the text `prompt`,
         # usually at the expense of lower image quality.

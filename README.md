@@ -27,7 +27,8 @@ Download COD datasets in the Dataset folder. The dataset needs to include 'Imgs'
 python inpainting_diff.py --indir ./Dataset --outdir ./result
 ```` 
 ### Dataset
-The generated dataset can be downloaded: 
+See here for an overview of the datastet. The dataset can be downloaded here. 
+
 
 ## Paper Details
 ### Generation Results 
