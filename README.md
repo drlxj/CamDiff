@@ -3,6 +3,9 @@
 
 Consequently, the synthesized image retains its original camouflage label while incorporating salient objects, yielding camouflage samples with richer characteristics. The results of user studies show that the salient objects in the scenes synthesized by our framework attract the user's attention more; thus, such samples pose a greater challenge to existing COD models.
 
+![Figure 1 - examples](Imgs/examp.png)
+The synthesized object is within a green box, while the original object within the image was enclosed in a red box. 
+
 ## Requirement
 A suitable [conda](https://conda.io/) environment named `camdiff` can be created and activated with:
 ```` bash
@@ -28,8 +31,8 @@ The generated dataset can be downloaded:
 
 ## Paper Details
 ### Generation Results 
-The figure shows the synthesized images from our framework from various classes. On the left side, the text is the input prompt, and each image is extended to generate three additional images of the same class, featuring objects with varying appearances. 
-![Figure 1 - gneration](Imgs/multi.png)
+Examples of the synthesized images from CamDiff from various classes. Each image is extended to generate three additional images of the same class, featuring objects with varying appearances. 
+![Figure 1 - gneration](Imgs/multi2.png)
 
 
 ### Evaluation on the robustness to saliency of COD models
