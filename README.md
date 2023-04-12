@@ -32,7 +32,7 @@ The generated dataset can be downloaded:
 ## Paper Details
 ### Generation Results 
 Examples of the synthesized images from CamDiff from various classes. Each image is extended to generate three additional images of the same class, featuring objects with varying appearances. 
-![Figure 1 - gneration](Imgs/multi2.png)
+![Figure 1 - gneration](Imgs/multi.png)
 
 
 ### Evaluation on the robustness to saliency of COD models
@@ -42,5 +42,5 @@ The second row: the results of the models that use the same checkpoints as the f
 
 The third row: the results of the models that use the checkpoints trained on our Diff-COD dataset, and then tested on the synthesized images. Compared with the second row, the robustness to saliency improves significantly.
 
-![Figure 2 - gneration](Imgs/Screenshot.png)
+![Figure 2 - gneration](Imgs/eval.png)
 
