@@ -48,8 +48,6 @@ COD-RGBD
         XXXXXX.png
       new
         XXXXXX.jpg
-      pose
-        000000.txt
     CHAMELEON
       Imgs
       GT
