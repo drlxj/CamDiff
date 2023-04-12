@@ -1,6 +1,10 @@
 # CamDiff
+**CamDiff** is an approach inspired by AI-Generated Content (AIGC) that overcomes the scarcity of multi-pattern training images. Specifically, CamDiff leverages the [latent diffusion model](https://huggingface.co/runwayml/stable-diffusion-inpainting) to synthesize salient objects in camouflaged scenes, and use the zero-shot image classification ability of the [CLIP model](https://openai.com/research/clip) to prevent synthesis failures and ensure the synthesized object aligns with the input prompt. 
 
-## Create environment
+Consequently, the synthesized image retains its original camouflage label while incorporating salient objects, yielding camouflage samples with richer characteristics. The results of user studies show that the salient objects in the scenes synthesized by our framework attract the user's attention more; thus, such samples pose a greater challenge to existing COD models.
+
+## Requirement
+A suitable [conda](https://conda.io/) environment named `camdiff` can be created and activated with:
 ```` bash
 # Create env
 conda create -n camdiff python=3.10
@@ -27,6 +31,7 @@ The generated dataset can be downloaded:
 The figure shows the synthesized images from our framework from various classes. On the left side, the text is the input prompt, and each image is extended to generate three additional images of the same class, featuring objects with varying appearances. 
 ![Figure 1 - gneration](Imgs/multi.png)
 
+
 ### Evaluation on the robustness to saliency of COD models
 The first row: the results of the models that were pretrained on COD datasets, and then tested on the original images. They show a good performance of detecting the camouflaged objects.
 
@@ -34,5 +39,5 @@ The second row: the results of the models that use the same checkpoints as the f
 
 The third row: the results of the models that use the checkpoints trained on our Diff-COD dataset, and then tested on the synthesized images. Compared with the second row, the robustness to saliency improves significantly.
 
-![Figure 2 - gneration](Imgs/eval.png)
+![Figure 2 - gneration](Imgs/Screenshot.png)
 
