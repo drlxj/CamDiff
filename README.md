@@ -1,4 +1,4 @@
-# CamDiff
+# CamDiff (CAAI AIR)
 **CamDiff** is an approach inspired by AI-Generated Content (AIGC) that overcomes the scarcity of multi-pattern training images. Specifically, CamDiff leverages the [latent diffusion model](https://huggingface.co/runwayml/stable-diffusion-inpainting) to synthesize salient objects in camouflaged scenes, and use the zero-shot image classification ability of the [CLIP model](https://openai.com/research/clip) to prevent synthesis failures and ensure the synthesized object aligns with the input prompt. 
 
 Consequently, the synthesized image retains its original camouflage label while incorporating salient objects, yielding camouflage samples with richer characteristics. The results of user studies show that the salient objects in the scenes synthesized by our framework attract the user's attention more; thus, such samples pose a greater challenge to existing COD models.
@@ -82,4 +82,18 @@ The second row: the results of the models that use the same checkpoints as the f
 The third row: the results of the models that use the checkpoints trained on our Diff-COD dataset, and then tested on the synthesized images. Compared with the second row, the robustness to saliency improves significantly.
 
 ![Figure 2 - gneration](Imgs/eval.png)
+
+## Citation
+If you find this repo useful, please consider citing:
+
+```
+@article{luo2023camdiff, 
+author = {Luo, Xue-Jing and Wang, Shuo and Wu, Zongwei and Sakaridis, Christos and Cheng, Yun and Fan, Deng-Ping and Van Gool, Luc},
+title = {CamDiff: Camouflage Image Augmentation via Diffusion Model},
+year = {2023},
+journal = {CAAI Artificial Intelligence Research},
+}
+  
+```
+
 
